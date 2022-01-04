@@ -2,7 +2,7 @@
 
 
 #include "SharedCamera.h"
-#include "Components/CameraComponent.h"
+#include "Camera/CameraComponent.h"
 
 // Sets default values
 ASharedCamera::ASharedCamera()

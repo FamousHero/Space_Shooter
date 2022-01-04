@@ -19,6 +19,27 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// Called when player wants to rotate this pawn actor
+	void TurnAtRate(float Rate);
+
+	void MoveForward(float AxisValue);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
+	float MaxSpeed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
+	float MinSpeed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
+	float StartSpeed;
+
+	float CurrSpeed;
+
+	void Boost();
+
+	void Brake();
+
+	void ResetSpeed();
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -41,6 +62,9 @@ private:
 	
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
-		class UCameraComponent* CameraComponent;
+	class UCameraComponent* CameraComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
+	float BaseTurnRate;
 
 };
