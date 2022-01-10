@@ -20,9 +20,11 @@ protected:
 	virtual void BeginPlay() override;
 
 	// Called when player wants to rotate this pawn actor
-	void TurnAtRate(float Rate);
+	void Rotate(float Rate);
 
-	void MoveForward(float AxisValue);
+	void MoveForward(float AllowedSpeed);
+
+	void MoveUp(float AllowedSpeed);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
 	float MaxSpeed;
@@ -66,5 +68,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
 	float BaseTurnRate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
+	uint8 bReverseDirection : 1;
 
 };
