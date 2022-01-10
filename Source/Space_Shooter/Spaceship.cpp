@@ -6,6 +6,7 @@
 #include "PaperSpriteComponent.h"
 #include "Camera/CameraComponent.h"
 
+
 // Sets default values
 ASpaceship::ASpaceship()
 {
@@ -38,7 +39,12 @@ ASpaceship::ASpaceship()
 	CameraComponent->SetWorldRotation(FRotator(0, 0, -90.0f));
 	CameraComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepWorldTransform);
 
-	CurrSpeed = 10.0f;
+}
+
+
+void ASpaceship::OnConstruction(const FTransform& Transform)
+{
+	CurrSpeed = StartSpeed;
 	BaseTurnRate = 45.0f;
 }
 
@@ -56,7 +62,6 @@ void ASpaceship::Tick(float DeltaTime)
 
 	float AllowedSpeed = CurrSpeed * DeltaTime;
 	MoveForward(AllowedSpeed);
-	MoveUp(AllowedSpeed);
 }
 
 // Called to bind functionality to input
@@ -88,6 +93,7 @@ void ASpaceship::ResetSpeed()
 {
 	CurrSpeed = StartSpeed;
 }
+
 void ASpaceship::MoveForward(float AllowedSpeed)
 {
 	// find out which way is forward
@@ -100,25 +106,15 @@ void ASpaceship::MoveForward(float AllowedSpeed)
 	const FVector Direction = FRotationMatrix(PitchRotation).GetUnitAxis(EAxis::X);
 
 	//UE_LOG(LogTemp, Warning, TEXT("Direction is is %s"), *Direction.ToString());
-	UE_LOG(LogTemp, Warning, TEXT("Added %f to X"), Direction.X);
+	UE_LOG(LogTemp, Warning, TEXT("Added %f to Z"), Direction.Z);
 	FVector Pos = GetActorLocation();
-	FMath::Abs(GetActorQuat().Y) < .707f ? Pos += Direction * AllowedSpeed: Pos -= Direction * AllowedSpeed;
+	FMath::Abs(GetActorQuat().Y) < .707f ? Pos.X += Direction.X * AllowedSpeed: Pos.X -= Direction.X * AllowedSpeed;
+	Pos.Z += Direction.Z * AllowedSpeed;
 	SetActorLocation(Pos);
 
 }
 
-void ASpaceship::MoveUp(float AllowedSpeed)
-{
-	//const FRotator Rotation = GetActorRotation();
-	//const FRotator PitchRotation(Rotation.Pitch, 0, 0);
-	//// get forward vector
-	//const FVector Direction = FRotationMatrix(PitchRotation).GetUnitAxis(EAxis::Z);
-	////UE_LOG(LogTemp, Warning, TEXT("Direction is is %s"), *Direction.ToString());
-	//FVector Pos = GetActorLocation();
-	//Pos += Direction * AllowedSpeed;
-	//SetActorLocation(Pos);
 
-}
 void ASpaceship::Rotate(float Rate)
 {
 	FRotator RotationToAdd;

@@ -11,6 +11,10 @@ class SPACE_SHOOTER_API ASpaceship : public APawn
 {
 	GENERATED_BODY()
 
+
+	virtual void OnConstruction(const FTransform& Transform) override;
+
+
 public:
 	// Sets default values for this pawn's properties
 	ASpaceship();
@@ -24,8 +28,6 @@ protected:
 
 	void MoveForward(float AllowedSpeed);
 
-	void MoveUp(float AllowedSpeed);
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
 	float MaxSpeed;
 
@@ -35,6 +37,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
 	float StartSpeed;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ship")
 	float CurrSpeed;
 
 	void Boost();
