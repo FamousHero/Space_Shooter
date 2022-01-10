@@ -26,7 +26,15 @@ protected:
 	// Called when player wants to rotate this pawn actor
 	void Rotate(float Rate);
 
+	UFUNCTION(Server, Unreliable)
+	void Server_UpdateRotator(FQuat Rotation);
+	void Server_UpdateRotator_Implementation(FQuat Rotation);
+
 	void MoveForward(float AllowedSpeed);
+
+	UFUNCTION(Server, Unreliable)
+	void Server_UpdateLocation(FVector Position);
+	void Server_UpdateLocation_Implementation(FVector Position);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
 	float MaxSpeed;

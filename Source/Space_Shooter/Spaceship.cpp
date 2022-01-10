@@ -79,7 +79,8 @@ void ASpaceship::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent
 
 }
 
-
+////////////////////////////////////////
+//Movement
 void ASpaceship::Boost()
 {
 	CurrSpeed = MaxSpeed;
@@ -94,29 +95,38 @@ void ASpaceship::ResetSpeed()
 	CurrSpeed = StartSpeed;
 }
 
+
 void ASpaceship::MoveForward(float AllowedSpeed)
 {
 	// find out which way is forward
 	const FRotator Rotation = GetActorRotation();
 	const FRotator PitchRotation(Rotation.Pitch, 0, 0);
-	UE_LOG(LogTemp, Warning, TEXT("Current Pitch is %f %f %f"), PitchRotation.Pitch, PitchRotation.Roll, PitchRotation.Yaw);
-	UE_LOG(LogTemp, Warning, TEXT("Current Quat X is %f"), GetActorQuat().Y);
 
 	// get forward vector
 	const FVector Direction = FRotationMatrix(PitchRotation).GetUnitAxis(EAxis::X);
 
-	//UE_LOG(LogTemp, Warning, TEXT("Direction is is %s"), *Direction.ToString());
-	UE_LOG(LogTemp, Warning, TEXT("Added %f to Z"), Direction.Z);
 	FVector Pos = GetActorLocation();
 	FMath::Abs(GetActorQuat().Y) < .707f ? Pos.X += Direction.X * AllowedSpeed: Pos.X -= Direction.X * AllowedSpeed;
 	Pos.Z += Direction.Z * AllowedSpeed;
 	SetActorLocation(Pos);
 
+	if ((GetLocalRole() < ROLE_Authority))
+	{
+		Server_UpdateLocation(GetActorLocation());
+	}
 }
 
+void ASpaceship::Server_UpdateRotator_Implementation(FQuat Rotation)
+{
+	SetActorRotation(Rotation);
+}
+
+//////////////////////////////////////////////////
+//Rotation
 
 void ASpaceship::Rotate(float Rate)
 {
+
 	FRotator RotationToAdd;
 	if (!FMath::IsNearlyZero(Rate, KINDA_SMALL_NUMBER))
 	{
@@ -128,4 +138,16 @@ void ASpaceship::Rotate(float Rate)
 		
 	}
 	AddActorLocalRotation(RotationToAdd.Quaternion());
+
+	if ((GetLocalRole() < ROLE_Authority) && !FMath::IsNearlyZero(Rate, KINDA_SMALL_NUMBER))
+	{
+		Server_UpdateRotator(GetActorQuat());
+	}
+}
+
+
+
+void ASpaceship::Server_UpdateLocation_Implementation(FVector Location)
+{
+	SetActorLocation(Location);
 }
