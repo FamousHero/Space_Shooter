@@ -26,14 +26,16 @@ protected:
 	// Called when player wants to rotate this pawn actor
 	void Rotate(float Rate);
 
-	UFUNCTION(Server, Unreliable)
+	UFUNCTION(Server, Unreliable, WithValidation)
 	void Server_UpdateRotator(FQuat Rotation);
+	bool Server_UpdateRotator_Validate(FQuat Rotation);
 	void Server_UpdateRotator_Implementation(FQuat Rotation);
 
 	void MoveForward(float AllowedSpeed);
 
-	UFUNCTION(Server, Unreliable)
+	UFUNCTION(Server, Unreliable, WithValidation)
 	void Server_UpdateLocation(FVector Position);
+	bool Server_UpdateLocation_Validate(FVector Position);
 	void Server_UpdateLocation_Implementation(FVector Position);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
@@ -74,6 +76,7 @@ private:
 		UChildActorComponent* ShipTip;
 	
 public:
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
 	class UCameraComponent* CameraComponent;
 

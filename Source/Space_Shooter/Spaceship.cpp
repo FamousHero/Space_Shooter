@@ -5,7 +5,7 @@
 #include "Components/ArrowComponent.h"
 #include "PaperSpriteComponent.h"
 #include "Camera/CameraComponent.h"
-
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ASpaceship::ASpaceship()
@@ -18,26 +18,28 @@ ASpaceship::ASpaceship()
 	SetReplicates(true);
 	SetReplicatingMovement(bReplicates);
 
-	if (!RootComponent)
-	{
-		RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("ShipBase"));
-	}
+	ShipSprite = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("ShipSprite"));
+	ShipSprite->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+
+	RootComponent = ShipSprite;
+
 	ShipDirection = CreateDefaultSubobject<UArrowComponent>(TEXT("ShipDirection"));
 	ShipDirection->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 
-	ShipSprite = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("ShipSprite"));
-	ShipSprite->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 
 	ShipTip = CreateDefaultSubobject<UChildActorComponent>(TEXT("ShipTip"));
 	ShipTip->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	
+
+	//!SharedCamera ? CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("ShipCamera")) : CameraComponent = SharedCamera;
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("ShipCamera"));
 	CameraComponent->bUsePawnControlRotation = false;
 	CameraComponent->ProjectionMode = ECameraProjectionMode::Orthographic;
 	CameraComponent->OrthoWidth = 1024.0f;
 	CameraComponent->AspectRatio = 3.0f / 4.0f;
 	CameraComponent->SetWorldRotation(FRotator(0, 0, -90.0f));
-	CameraComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepWorldTransform);
+
+	CameraComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 
 }
 
@@ -108,7 +110,7 @@ void ASpaceship::MoveForward(float AllowedSpeed)
 	FVector Pos = GetActorLocation();
 	FMath::Abs(GetActorQuat().Y) < .707f ? Pos.X += Direction.X * AllowedSpeed: Pos.X -= Direction.X * AllowedSpeed;
 	Pos.Z += Direction.Z * AllowedSpeed;
-	SetActorLocation(Pos);
+	SetActorLocation(Pos, true);
 
 	if ((GetLocalRole() < ROLE_Authority))
 	{
@@ -119,6 +121,10 @@ void ASpaceship::MoveForward(float AllowedSpeed)
 void ASpaceship::Server_UpdateRotator_Implementation(FQuat Rotation)
 {
 	SetActorRotation(Rotation);
+}
+bool ASpaceship::Server_UpdateRotator_Validate(FQuat Rotation)
+{
+	return true;
 }
 
 //////////////////////////////////////////////////
@@ -135,9 +141,9 @@ void ASpaceship::Rotate(float Rate)
 			RotationToAdd.Pitch = -AllowedRotation;
 		else
 			RotationToAdd.Pitch = AllowedRotation;
+		AddActorLocalRotation(RotationToAdd.Quaternion());	
 		
 	}
-	AddActorLocalRotation(RotationToAdd.Quaternion());
 
 	if ((GetLocalRole() < ROLE_Authority) && !FMath::IsNearlyZero(Rate, KINDA_SMALL_NUMBER))
 	{
@@ -145,9 +151,13 @@ void ASpaceship::Rotate(float Rate)
 	}
 }
 
-
+bool ASpaceship::Server_UpdateLocation_Validate(FVector Location)
+{
+	
+	return true;
+}
 
 void ASpaceship::Server_UpdateLocation_Implementation(FVector Location)
 {
-	SetActorLocation(Location);
+	SetActorLocation(Location, true);
 }
