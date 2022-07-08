@@ -6,6 +6,8 @@
 #include "PaperSpriteComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Engine/Engine.h"
+
 
 // Sets default values
 ASpaceship::ASpaceship()
@@ -15,13 +17,14 @@ ASpaceship::ASpaceship()
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	SetReplicates(true);
-	SetReplicatingMovement(bReplicates);
+	bReplicates = true;
+	SetReplicatingMovement(true);
+	
+	//SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("Root Component")));
 
 	ShipSprite = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("ShipSprite"));
-	ShipSprite->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-
-	RootComponent = ShipSprite;
+	SetRootComponent(ShipSprite);
+	//ShipSprite->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 
 	ShipDirection = CreateDefaultSubobject<UArrowComponent>(TEXT("ShipDirection"));
 	ShipDirection->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
@@ -35,12 +38,20 @@ ASpaceship::ASpaceship()
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("ShipCamera"));
 	CameraComponent->bUsePawnControlRotation = false;
 	CameraComponent->ProjectionMode = ECameraProjectionMode::Orthographic;
-	CameraComponent->OrthoWidth = 1024.0f;
+	CameraComponent->OrthoWidth = 2048.0f;
 	CameraComponent->AspectRatio = 3.0f / 4.0f;
 	CameraComponent->SetWorldRotation(FRotator(0, 0, -90.0f));
 
 	CameraComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	CurrSpeed = 45.0f;
 
+}
+
+void ASpaceship::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ASpaceship, CurrSpeed);
 }
 
 
@@ -85,46 +96,112 @@ void ASpaceship::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent
 //Movement
 void ASpaceship::Boost()
 {
-	CurrSpeed = MaxSpeed;
+	
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		FString message = FString::Printf(TEXT("called by client"));
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Blue, message);
+		Server_SetCurrSpeed(MaxSpeed);
+	}
+	else
+	{
+		CurrSpeed = MaxSpeed;
+	}
 }
 
 void ASpaceship::Brake()
 {
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		Server_SetCurrSpeed(MinSpeed);
+	}
+	else{
 	CurrSpeed = MinSpeed;
+	}
 }
 void ASpaceship::ResetSpeed()
 {
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		Server_SetCurrSpeed(StartSpeed);
+	}
+	else{
 	CurrSpeed = StartSpeed;
+	}
+}
+
+void ASpaceship::OnRep_CurrSpeed()
+{
+	FVector Pos = GetActorLocation();
+
+	FString message = FString::Printf(TEXT("currSpeed is %f | pos is %f %f %f"), CurrSpeed, Pos.X, Pos.Y, Pos.Z);
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Blue, message);
+	//Do client stuff for each client (or check if its the owner
+}
+
+bool ASpaceship::Server_SetCurrSpeed_Validate(float NewSpeed)
+{
+	return true;
+}
+
+void ASpaceship::Server_SetCurrSpeed_Implementation(float NewSpeed)
+{
+	CurrSpeed = NewSpeed;
+}
+void ASpaceship::MoveForward(float AllowedSpeed)
+{
+
+	//if you are an actor on the server
+	if ((GetLocalRole() == ROLE_Authority))
+	{
+	// find out which way is forward
+		const FRotator Rotation = GetActorRotation();
+		const FRotator PitchRotation(Rotation.Pitch, 0, 0);
+
+		// get forward vector
+		const FVector Direction = FRotationMatrix(PitchRotation).GetUnitAxis(EAxis::X);
+
+		FVector Pos = GetActorLocation();
+		FMath::Abs(GetActorQuat().Y) < .707f ? Pos.X += Direction.X * AllowedSpeed: Pos.X -= Direction.X * AllowedSpeed;
+		Pos.Z += Direction.Z * AllowedSpeed;
+		SetActorLocation(Pos, true);
+		Client_SetLocation(GetActorLocation());
+		FString message = FString::Printf(TEXT(" loc is currently %f, %f, %f"), GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z);
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, FString(TEXT("SERVER:"))+ GetName() + message);
+		
+	}
+	else if(GetLocalRole() != ROLE_Authority)
+	{
+		FString message = FString::Printf(TEXT(" loc is currently %f, %f, %f"), GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z);
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Blue, FString(TEXT("Client:")) + GetName() + message);
+		if (GetController())
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Blue, FString(TEXT("Client controller was found for "))+GetName() );
+
+		}
+	}
 }
 
 
-void ASpaceship::MoveForward(float AllowedSpeed)
+void ASpaceship::Client_SetLocation_Implementation(FVector NewLocation)
 {
-	// find out which way is forward
-	const FRotator Rotation = GetActorRotation();
-	const FRotator PitchRotation(Rotation.Pitch, 0, 0);
-
-	// get forward vector
-	const FVector Direction = FRotationMatrix(PitchRotation).GetUnitAxis(EAxis::X);
-
-	FVector Pos = GetActorLocation();
-	FMath::Abs(GetActorQuat().Y) < .707f ? Pos.X += Direction.X * AllowedSpeed: Pos.X -= Direction.X * AllowedSpeed;
-	Pos.Z += Direction.Z * AllowedSpeed;
-	SetActorLocation(Pos, true);
-
-	if ((GetLocalRole() < ROLE_Authority))
-	{
-		Server_UpdateLocation(GetActorLocation());
-	}
+	SetActorLocation(NewLocation);
 }
 
 void ASpaceship::Server_UpdateRotator_Implementation(FQuat Rotation)
 {
-	SetActorRotation(Rotation);
+	AddActorLocalRotation(Rotation);
+	Client_SetRotation(GetActorQuat());
 }
 bool ASpaceship::Server_UpdateRotator_Validate(FQuat Rotation)
 {
 	return true;
+}
+
+
+void ASpaceship::Client_SetRotation_Implementation(FQuat NewRotation)
+{
+	SetActorRotation(NewRotation);
 }
 
 //////////////////////////////////////////////////
@@ -132,6 +209,8 @@ bool ASpaceship::Server_UpdateRotator_Validate(FQuat Rotation)
 
 void ASpaceship::Rotate(float Rate)
 {
+
+	
 
 	FRotator RotationToAdd;
 	if (!FMath::IsNearlyZero(Rate, KINDA_SMALL_NUMBER))
@@ -141,16 +220,19 @@ void ASpaceship::Rotate(float Rate)
 			RotationToAdd.Pitch = -AllowedRotation;
 		else
 			RotationToAdd.Pitch = AllowedRotation;
-		AddActorLocalRotation(RotationToAdd.Quaternion());	
 		
 	}
-
-	if ((GetLocalRole() < ROLE_Authority) && !FMath::IsNearlyZero(Rate, KINDA_SMALL_NUMBER))
+	if ((GetLocalRole() != ROLE_Authority) && !FMath::IsNearlyZero(Rate, KINDA_SMALL_NUMBER))
 	{
-		Server_UpdateRotator(GetActorQuat());
+		Server_UpdateRotator(RotationToAdd.Quaternion());
+	}
+	else if (!FMath::IsNearlyZero(Rate, KINDA_SMALL_NUMBER))
+	{
+		AddActorLocalRotation(RotationToAdd.Quaternion());	
 	}
 }
 
+/*
 bool ASpaceship::Server_UpdateLocation_Validate(FVector Location)
 {
 	
@@ -159,5 +241,7 @@ bool ASpaceship::Server_UpdateLocation_Validate(FVector Location)
 
 void ASpaceship::Server_UpdateLocation_Implementation(FVector Location)
 {
+	UE_LOG(LogTemp, Warning, TEXT("in loc imp"));
 	SetActorLocation(Location, true);
 }
+*/

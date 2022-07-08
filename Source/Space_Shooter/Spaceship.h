@@ -18,6 +18,7 @@ class SPACE_SHOOTER_API ASpaceship : public APawn
 public:
 	// Sets default values for this pawn's properties
 	ASpaceship();
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
 	// Called when the game starts or when spawned
@@ -26,17 +27,21 @@ protected:
 	// Called when player wants to rotate this pawn actor
 	void Rotate(float Rate);
 
+
 	UFUNCTION(Server, Unreliable, WithValidation)
 	void Server_UpdateRotator(FQuat Rotation);
 	bool Server_UpdateRotator_Validate(FQuat Rotation);
 	void Server_UpdateRotator_Implementation(FQuat Rotation);
 
+
 	void MoveForward(float AllowedSpeed);
 
+	/*
 	UFUNCTION(Server, Unreliable, WithValidation)
 	void Server_UpdateLocation(FVector Position);
 	bool Server_UpdateLocation_Validate(FVector Position);
 	void Server_UpdateLocation_Implementation(FVector Position);
+	*/
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
 	float MaxSpeed;
@@ -47,14 +52,30 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ship")
 	float StartSpeed;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ship")
+	UPROPERTY(ReplicatedUsing=OnRep_CurrSpeed, VisibleAnywhere, BlueprintReadOnly, Category = "Ship")
 	float CurrSpeed;
+
+	UFUNCTION()
+	void OnRep_CurrSpeed();
 
 	void Boost();
 
 	void Brake();
 
 	void ResetSpeed();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_SetCurrSpeed(float NewSpeed);
+	bool Server_SetCurrSpeed_Validate(float NewSpeed);
+	void Server_SetCurrSpeed_Implementation(float NewSpeed);
+
+	UFUNCTION(Client, Unreliable)
+	void Client_SetLocation(FVector NewLocation);
+	void Client_SetLocation_Implementation(FVector NewLocation);
+
+	UFUNCTION(Client, Unreliable)
+	void Client_SetRotation(FQuat NewRotation);
+	void Client_SetRotation_Implementation(FQuat NewRotation);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
